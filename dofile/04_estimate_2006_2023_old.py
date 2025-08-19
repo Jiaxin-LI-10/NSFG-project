@@ -188,30 +188,16 @@ def load_and_prepare_data():
 # =============================================================================
 
 def neg_log_likelihood(gamma, Z, gw_f, gw_m, birth_outcome):
-    """
-    负对数似然函数
-    """
-    # Cast to float to avoid type issues
     Z = Z.astype(float)
-    gw_f = gw_f.astype(float)
-    gw_m = gw_m.astype(float)
-    birth_outcome = birth_outcome.astype(float)
-    
-    # Ensure gw in [0,1]
-    gw_f = np.clip(gw_f, 1e-6, 1 - 1e-6)
-    gw_m = np.clip(gw_m, 1e-6, 1 - 1e-6)
-    
-    # Calculate eta using logistic function
-    eta = expit(np.dot(Z, gamma))
-    
-    # Mixture of preferences directly as probability (no double logistic)
-    prob_birth = eta * gw_f + (1 - eta) * gw_m
-    prob_birth = np.clip(prob_birth, 1e-9, 1 - 1e-9)
-    
-    # Calculate log-likelihood
-    log_lik = np.sum(birth_outcome * np.log(prob_birth) + (1 - birth_outcome) * np.log(1 - prob_birth))
-    
-    return -log_lik
+    gw_f = np.clip(gw_f.astype(float), 1e-6, 1-1e-6)
+    gw_m = np.clip(gw_m.astype(float), 1e-6, 1-1e-6)
+    eta = expit(Z @ gamma)                        # η=Λ(Zγ)
+    mix = eta*gw_f + (1-eta)*gw_m                 # 混合指数
+    prob = expit(mix)                             # 外层 Λ(·)  —— 关键！
+    prob = np.clip(prob, 1e-9, 1-1e-9)
+    ll = birth_outcome*np.log(prob) + (1-birth_outcome)*np.log(1-prob)
+    return -np.sum(ll)
+
 
 def estimate_bargaining_power(df_model, Z):
     """
